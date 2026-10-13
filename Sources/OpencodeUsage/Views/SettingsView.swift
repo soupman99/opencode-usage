@@ -14,6 +14,11 @@ struct SettingsView: View {
     @State private var launchAtLoginReady: Bool = false
     @FocusState private var isTextFieldFocused: Bool
 
+    /// Shown when macOS parks the launch-at-login registration until the
+    /// user allows the app in System Settings.
+    private static let launchApprovalHint =
+        "macOS is waiting for you to allow OpenCode Usage in System Settings > General > Login Items."
+
     var body: some View {
         VStack(alignment: .leading, spacing: 0) {
             formView
@@ -90,7 +95,7 @@ struct SettingsView: View {
                         else { return }
                         do {
                             try LaunchAtLogin.setEnabled(newValue)
-                            errorMessage = nil
+                            errorMessage = LaunchAtLogin.needsApproval ? Self.launchApprovalHint : nil
                         } catch {
                             launchAtLogin = oldValue
                             errorMessage = "Could not update launch-at-login: \(error.localizedDescription)"
@@ -104,6 +109,9 @@ struct SettingsView: View {
             isTextFieldFocused = true
             launchAtLogin = LaunchAtLogin.isEnabled
             launchAtLoginReady = true
+            if LaunchAtLogin.needsApproval {
+                errorMessage = Self.launchApprovalHint
+            }
         }
     }
 

@@ -10,16 +10,16 @@ enum MenuBarRenderer {
     /// badges shows `—` until stats arrive.
     static func image(for stats: UsageStats?, style: MenuBarStyle) -> NSImage {
         switch style {
-        case .logo: logoImage()
+        case .logo: logoImage
         case .badges: badgesImage(for: stats)
         }
     }
 
     // MARK: - Logo
 
-    /// Template image loaded from the bundled `opencode-logo.png`,
+    /// Template image loaded once from the bundled `opencode-logo.png`,
     /// falling back to an SF Symbol if the asset is missing.
-    private static func logoImage() -> NSImage {
+    private static let logoImage: NSImage = {
         let url = Bundle.module.url(forResource: "opencode-logo", withExtension: "png")
         let img = url.flatMap { NSImage(contentsOf: $0) }
             ?? NSImage(systemSymbolName: "bolt.fill", accessibilityDescription: "OpenCode")
@@ -27,7 +27,7 @@ enum MenuBarRenderer {
         img.isTemplate = true
         img.size = NSSize(width: 16, height: 16)
         return img
-    }
+    }()
 
     // MARK: - Badges
 
@@ -141,14 +141,17 @@ enum MenuBarRenderer {
         .white
     }
 
-    /// 0–74 green, 75–89 yellow, 90–100 red — full-saturation pill
-    /// backgrounds. Yellow uses a darker goldenrod shade so white text
-    /// stays legible (systemYellow is too pale).
+    /// Pill fills keyed off `UsageLevel` so the menu bar and the popup
+    /// always agree on what counts as elevated.
+    ///
+    /// White 13pt text needs roughly 3.5:1 against the fill, and the
+    /// system colors land well below that (systemGreen 2.2:1,
+    /// systemYellow 1.5:1), so all three shades are picked by hand.
     private static func tintColor(for percent: Int) -> NSColor {
-        switch percent {
-        case ..<75: NSColor.systemGreen
-        case ..<90: NSColor(srgbRed: 0.86, green: 0.62, blue: 0.0, alpha: 1.0)
-        default: NSColor.systemRed
+        switch UsageLevel(percent: percent) {
+        case .safe: NSColor(srgbRed: 0.16, green: 0.58, blue: 0.28, alpha: 1.0)
+        case .elevated: NSColor(srgbRed: 0.68, green: 0.47, blue: 0.0, alpha: 1.0)
+        case .critical: NSColor(srgbRed: 0.78, green: 0.16, blue: 0.12, alpha: 1.0)
         }
     }
 }

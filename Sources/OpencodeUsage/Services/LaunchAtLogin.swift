@@ -11,19 +11,31 @@ import ServiceManagement
 /// the system may refuse to actually launch them at login.
 @MainActor
 enum LaunchAtLogin {
-    /// Whether the system currently has this app registered to launch at login.
+    /// Whether the system currently has this app registered to launch at
+    /// login. `.requiresApproval` counts as registered: the item exists in
+    /// Login Items, macOS is only waiting for the user to allow it.
     static var isEnabled: Bool {
-        SMAppService.mainApp.status == .enabled
+        switch SMAppService.mainApp.status {
+        case .enabled, .requiresApproval: true
+        default: false
+        }
+    }
+
+    /// True while macOS holds the registration back until the user allows
+    /// the app in System Settings > General > Login Items.
+    static var needsApproval: Bool {
+        SMAppService.mainApp.status == .requiresApproval
     }
 
     /// Idempotent toggle. No-op if already in the desired state. Throws
-    /// if the system rejects the change (e.g. user denied the consent
-    /// prompt, status is `.requiresApproval`, etc.).
+    /// if the system rejects the change (e.g. the bundle sits somewhere
+    /// `SMAppService` cannot register). Unregistering covers
+    /// `.requiresApproval` too, so switching off drops a pending item.
     static func setEnabled(_ enabled: Bool) throws {
         let service = SMAppService.mainApp
-        if enabled, service.status != .enabled {
+        if enabled, !isEnabled {
             try service.register()
-        } else if !enabled, service.status == .enabled {
+        } else if !enabled, service.status != .notRegistered, service.status != .notFound {
             try service.unregister()
         }
     }
